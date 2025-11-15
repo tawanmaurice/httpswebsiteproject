@@ -4,7 +4,7 @@
 
 # Elastic IP for NAT Gateway
 resource "aws_eip" "nat" {
-  depends_on = [aws_internet_gateway.igw]  # ensure IGW exists first
+  depends_on = [aws_internet_gateway.igw] # ensure IGW exists first
 
   tags = {
     Name    = "nat-eip"

@@ -1,8 +1,6 @@
-# 11-route53.tf
-
 resource "aws_route53_record" "alb_alias_https" {
-  zone_id = data.aws_route53_zone.main.zone_id
-  name    = "site.tawanperry.top"
+  zone_id = var.route53_zone_id
+  name    = var.route53_record_name # e.g. "site.tawanperry.top"
   type    = "A"
 
   alias {
