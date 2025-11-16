@@ -1,22 +1,69 @@
-## HTTPS + Custom Domain with ALB, ACM, and Route 53
+# HTTPS Auto Scaling Web App on AWS (Terraform)
 
-In the final phase of this project, I secured the application using HTTPS and a custom domain:
+This project shows how I used **Terraform** to build a **highly available, HTTPS-secured web application** on AWS with:
 
-- **ACM (AWS Certificate Manager)**  
-  - Requested a public certificate for `site.tawanperry.top`.
-  - Used DNS validation with an automatic CNAME record in Route 53.
-  - Waited for the certificate status to become **Issued** before attaching it to the load balancer.
+- A custom domain: **https://site.tawanperry.top**
+- An **Application Load Balancer (ALB)** handling HTTP and HTTPS
+- An **Auto Scaling Group (ASG)** of EC2 instances
+- **ACM** (AWS Certificate Manager) for TLS certificates
+- **Route 53** for DNS and certificate validation
+- A custom **user data** script that serves a simple web page from each instance
 
-- **Application Load Balancer (ALB)**  
-  - Created an internet-facing ALB in my project VPC.
-  - Configured:
-    - **HTTP (80) listener** – forwards or redirects traffic.
-    - **HTTPS (443) listener** – uses the ACM certificate and forwards to the target group.
-  - Registered the Auto Scaling Group’s EC2 instances in the target group so they receive traffic.
+---
 
-- **Route 53 Alias Record**  
-  - Added an **A (Alias)** record: `site.tawanperry.top` → ALB DNS name.
-  - Enabled health checks via the ALB so traffic only goes to healthy instances.
+## 1. What I Built (High-Level)
 
-**Result:**  
-The application is now served over HTTPS at **https://site.tawanperry.top**, fronted by an Application Load Balancer, with automatic instance replacement and scaling handled by the Auto Scaling Group.
+**Goal:** Deploy a small web app that:
+
+- Runs on multiple EC2 instances in an **Auto Scaling Group**
+- Is fronted by an **Application Load Balancer**
+- Is reachable via a **friendly domain name** with **valid HTTPS**
+- Can automatically recover and scale when instances fail or load increases
+
+**Key AWS resources (via Terraform):**
+
+- **VPC + Subnets**
+  - 1 VPC for isolation
+  - Public and private subnets across multiple AZs (for HA)
+
+- **Security Groups**
+  - ALB SG: allows inbound HTTP (80) and HTTPS (443) from the internet
+  - EC2 SG: only allows inbound HTTP from the ALB SG
+
+- **Launch Template + Auto Scaling Group**
+  - Launch template defines:
+    - AMI, instance type, key pair
+    - Security group
+    - **User data** script (installs web server + serves a basic page)
+  - Auto Scaling Group:
+    - Spans multiple subnets
+    - Uses a target group for health checks
+    - Has scaling policy based on CPU utilization
+
+- **Application Load Balancer (ALB)**
+  - Internet-facing ALB
+  - HTTP listener (port 80)
+  - HTTPS listener (port 443) using ACM certificate
+  - Forwards to the target group that contains ASG instances
+
+- **ACM Certificate + Validation**
+  - Public cert for `site.tawanperry.top`
+  - DNS validation via a Route 53 CNAME record
+
+- **Route 53**
+  - Hosted zone for `tawanperry.top` (existing)
+  - CNAME record for **ACM validation**
+  - A-record alias that points `site.tawanperry.top` to the ALB
+
+---
+
+## 2. Folder Structure
+
+```text
+httpswebsite/
+  ├── main.tf
+  ├── variables.tf
+  ├── outputs.tf
+  ├── terraform.tfvars        # local, not committed (contains my values)
+  ├── .gitignore
+  └── README.md
